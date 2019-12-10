@@ -24,7 +24,7 @@ void	working_line(t_shell *shell, char *line)
 		name = ft_multi_strdup(3, *path, "/", com[0]);
 		ft_printf("name = {%s}\n", name);
 		if (access(name, F_OK | R_OK | X_OK) == 0)
-			ft_putendl("Yes");
+			execve(name, com + 1, NULL);
 		ft_strdel(&name);
 		path++;
 	}
