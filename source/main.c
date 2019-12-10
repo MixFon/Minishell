@@ -17,12 +17,14 @@ void	working_line(t_shell *shell, char *line)
 
 	path = shell->path;
 	com = ft_strsplit(line, ' ');
+	if (com == NULL)
+		return ;
 	while (*path != NULL)
 	{
 		name = ft_multi_strdup(3, *path, "/", com[0]);
-		if (access(name, F_OK) == 0)
-			ft_putendl("Yes");
 		ft_printf("name = {%s}\n", name);
+		if (access(name, F_OK | R_OK | X_OK) == 0)
+			ft_putendl("Yes");
 		ft_strdel(&name);
 		path++;
 	}
@@ -47,9 +49,12 @@ void	start_shell(t_shell *shell)
 
 void	print_arr(char **arr)
 {
+	if (arr == NULL)
+		return ;
+	ft_putstr("!@");
 	while (*arr != NULL)
 	{
-		ft_putendl(*arr);
+		ft_printf("arr [%s]\n", *arr);
 		arr++;
 	}
 }
