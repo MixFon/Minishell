@@ -8,6 +8,7 @@ typedef struct	s_shell
 	char		*home;
 	char		*pwd;
 	char		**path;
+	char		**env;
 }				t_shell;
 
 void	print_arr(char **arr);
