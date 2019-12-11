@@ -36,7 +36,10 @@ void	starting_bin(t_shell *shell, char *line)
 		return ;
 	while (*path != NULL)
 	{
-		name_bin = ft_multi_strdup(3, *path, "/", command[0]);
+		if (**command == '/')
+			name_bin = ft_strdup(*command);
+		else
+			name_bin = ft_multi_strdup(3, *path, "/", *command);
 		ft_printf("name = {%s}\n", name_bin);
 		if (access(name_bin, F_OK | R_OK | X_OK) == 0)
 		{
@@ -74,7 +77,7 @@ void	change_dir(t_shell *shell, char **command)
 {
 	char *name_path;
 
-	if (command[1] == NULL)
+	if (command[1] == NULL || command[1][0] == '~')
 	{
 		chdir(shell->home);
 		return ;
@@ -94,6 +97,8 @@ int		starting_builtins(t_shell *shell, char *line)
 	char **command;
 
 	command = ft_strsplit(line, ' ');
+	if (command == NULL)
+		return (0);
 	if (!(ft_strcmp("exit", command[0])))
 		exit(0);
 	if (!(ft_strcmp("cd", command[0])))
