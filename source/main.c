@@ -15,25 +15,30 @@ void	start_new_process(t_shell *shell,char **command,  char *name_bin)
 	pid_t	child;
 	int		*status;
 
+	ft_printf("name no_pat\n");
 	child = fork();
 	if (child == 0)
 		if (execve(name_bin, command, NULL) == -1)
 			ft_printf("Error opening %s file\n", name_bin);
 	if (wait(NULL) == -1)
 		ft_putendl("Error wait");
-	ft_printf("Status = [%d}\n", *status);
+	//ft_printf("Status = [%d}\n", *status);
 }
 
-void	starting_bin(t_shell *shell, char *line)
+void	is_no_path(t_shell *shell, char **command)
 {
-	char **command;
+	ft_printf("name no_path = {%s}\n", *command);
+	if (access(*command, F_OK | R_OK | X_OK) == 0)
+		start_new_process(shell, command,  *command);
+	else
+		ft_printf("minishell: command not found: %s\n", command[0]);
+}
+
+void	is_a_path(t_shell *shell, char **command)
+{
 	char **path;
 	char *name_bin;
 
-	path = shell->path;
-	command = ft_strsplit(line, ' ');
-	if (command == NULL)
-		return ;
 	while (*path != NULL)
 	{
 		if (**command == '/')
@@ -51,9 +56,23 @@ void	starting_bin(t_shell *shell, char *line)
 	}
 	if (*path == NULL)
 		ft_printf("minishell: command not found: %s\n", command[0]);
+	ft_strdel(&name_bin);
+}
+
+void	starting_bin(t_shell *shell, char *line)
+{
+	char **command;
+	char **path;
+
+	command = ft_strsplit(line, ' ');
+	if (check_command(command))
+		return ;
+	if (shell->path == NULL)
+		is_no_path(shell, command);
+	else
+		is_a_path(shell, command);
 	//print_arr(shell->env);
 	//print_arr(command);
-	ft_strdel(&name_bin);
 	dell_arr(&command);
 }
 
@@ -108,21 +127,27 @@ int		starting_builtins(t_shell *shell, char *line)
 {
 	char **command;
 
+	ft_putendl("builtins");
 	command = ft_strsplit(line, ' ');
 	if (check_command(command))
 		return (1);
-	ft_putendl("Hello");
 	if (!(ft_strcmp("exit", command[0])))
 		exit(0);
-	ft_putendl("Hello1");
 	if (!(ft_strcmp("cd", command[0])))
 	{
 		change_dir(shell, command);
 		dell_arr(&command);
 		return (1);
 	}
-	ft_putendl("Hello1");
 	dell_arr(&command);
+	ft_putendl("builtins<");
+	return (0);
+}
+
+int not_print_c(char c)
+{
+	if (c > 0 && c < 32)
+		return (1);
 	return (0);
 }
 
@@ -131,13 +156,24 @@ char	*parsing_line(char **line)
 	char	*new_line;
 	int		i;
 
-	i = 0;
+	i = -1;
+	new_line = ft_strnew(ft_strlen(*line));
+	while ((*line)[++i] != '\0')
+	{
+		if (not_print_c((*line)[i]))
+			new_line[i] = ' ';
+		else
+			new_line[i] = (*line)[i];
+	}
+		
+	/*
 	while ((*line)[i] < 33 && (*line)[i] != '\0')
 	{
 		ft_printf("(*line)[i] = {%c}\n", (*line)[i]);
 		i++;
 	}
 	new_line = ft_strdup(*line + i);
+	*/
 	ft_strdel(line);
 	ft_printf("new line = [%s]\n", new_line);
 	return (new_line);
@@ -157,6 +193,7 @@ void	start_shell(t_shell *shell)
 		ft_putstr("$>");
 		ft_strdel(&line);
 	}
+	ft_strdel(&line);
 }
 
 void	print_arr(char **arr)
@@ -171,32 +208,13 @@ void	print_arr(char **arr)
 	}
 }
 
-void	print_shell(t_shell *shell)
-{
-	ft_printf("home = [%s]\n", shell->home);
-	ft_printf("pwd = [%s]\n", shell->pwd);
-	print_arr(shell->path);
-}
 
-void	working_env(t_shell *shell, char *env)
+void	init(t_shell *shell)
 {
-	if (!(ft_strncmp("HOME=", env, 5)))
-		shell->home = ft_strdup(env + 5);
-	else if (!(ft_strncmp("PWD=", env, 4)))
-		shell->pwd = ft_strdup(env + 4);
-	else if (!(ft_strncmp("PATH=", env, 5)))
-		shell->path = ft_strsplit(env + 5, ':');
-}
-
-void	init(t_shell *shell, char **env)
-{
-	shell->env = env;
-	while(*env != NULL)
-	{
-		working_env(shell, *env);
-		env++;
-	}
-	print_shell(shell);
+	shell->env = NULL;
+	shell->home = NULL;
+	shell->pwd  = NULL;
+	shell->path = NULL;
 }
 
 void	print_error(char **av)
@@ -209,13 +227,13 @@ void	print_error(char **av)
 	sys_err(err);
 }
 
-int		main(int ac, char **av, char **env)
+int		main(int ac, char **av)
 {
 	t_shell	shell;
 
 	if (ac != 1)
 		print_error(av);
-	init(&shell, env);
+	init(&shell);
 	start_shell(&shell);
 	return (0);
 }
