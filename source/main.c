@@ -92,23 +92,55 @@ void	change_dir(t_shell *shell, char **command)
 	ft_strdel(&name_path);
 }
 
+int		check_command(char **command)
+{
+	if (command == NULL)
+		return (1);
+	if (*command == NULL)
+	{
+		dell_arr(&command);
+		return (1);
+	}
+	return (0);
+}
+
 int		starting_builtins(t_shell *shell, char *line)
 {
 	char **command;
 
 	command = ft_strsplit(line, ' ');
-	if (command == NULL)
-		return (0);
+	if (check_command(command))
+		return (1);
+	ft_putendl("Hello");
 	if (!(ft_strcmp("exit", command[0])))
 		exit(0);
+	ft_putendl("Hello1");
 	if (!(ft_strcmp("cd", command[0])))
 	{
 		change_dir(shell, command);
 		dell_arr(&command);
 		return (1);
 	}
+	ft_putendl("Hello1");
 	dell_arr(&command);
 	return (0);
+}
+
+char	*parsing_line(char **line)
+{
+	char	*new_line;
+	int		i;
+
+	i = 0;
+	while ((*line)[i] < 33 && (*line)[i] != '\0')
+	{
+		ft_printf("(*line)[i] = {%c}\n", (*line)[i]);
+		i++;
+	}
+	new_line = ft_strdup(*line + i);
+	ft_strdel(line);
+	ft_printf("new line = [%s]\n", new_line);
+	return (new_line);
 }
 
 void	start_shell(t_shell *shell)
@@ -119,6 +151,7 @@ void	start_shell(t_shell *shell)
 	while(get_next_line(0, &line))
 	{
 		ft_printf("line = {%s}\n", line);
+		line = parsing_line(&line);
 		if (!(starting_builtins(shell, line)))
 			starting_bin(shell, line);
 		ft_putstr("$>");
