@@ -387,14 +387,28 @@ char	*parsing_line(char **line)
 void	start_shell(t_shell *shell)
 {
 	char *line;
+	char **command;
+	int i;
 
 	ft_putstr("$>");
 	while(get_next_line(0, &line))
 	{
+		i = -1;
 		ft_printf("line = {%s}\n", line);
-		line = parsing_line(&line);
-		if (!(starting_builtins(shell, line)))
-			starting_bin(shell, line);
+		command = ft_strsplit(line, ';');
+		if (check_command(command))
+		{
+			ft_putstr("$>");
+			ft_strdel(&line);
+			continue;
+		}
+		while (command[++i] != NULL)
+		{
+			command[i] = parsing_line(&command[i]);
+			if (!(starting_builtins(shell, command[i])))
+				starting_bin(shell, command[i]);
+		}
+		dell_arr(&command);
 		ft_putstr("$>");
 		ft_strdel(&line);
 	}
