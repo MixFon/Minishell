@@ -5,7 +5,6 @@ void	dell_arr(char ***arr)
 	int i;
 
 	i = -1;
-	ft_putendl("ehllo");
 	if (arr == NULL)
 		return ;
 	if (*arr == NULL)
@@ -25,7 +24,7 @@ void	start_new_process(t_shell *shell, char **command,  char *name_bin)
 	ft_printf("name no_pat\n");
 	child = fork();
 	if (child == 0)
-		if (execve(name_bin, command, __environ) == -1)
+		if (execve(name_bin, command, environ) == -1)
 			ft_printf("Error opening %s file\n", name_bin);
 	if (wait(NULL) == -1)
 		ft_putendl("Error wait");
@@ -77,7 +76,7 @@ void	starting_bin(t_shell *shell, char *line)
 	if (check_command(command))
 		return ;
 	ft_printf("shell->path:\n");
-	print_arr(shell->path);
+	print_arr(shell->path, '\n');
 	if (shell->path == NULL)
 		is_no_path(shell, command);
 	else
@@ -93,30 +92,54 @@ char	*create_name_path(t_shell *shell, char **command)
 	
 	if (command[1][0] == '/')
 		name_path = ft_strdup(command[1]);
+	else if (command[1][0] == '~' && command[1][1] != '\0')
+		name_path = ft_multi_strdup(3, shell->home, "/", command[1] + 2);
+	else if (command[1][0] == '~' && command[1][1] == '\0')
+		name_path = ft_strdup(shell->home);
+	else if (command[1][0] == '-' && command[1][1] == '\0')
+	{
+		if (shell->pre_path == NULL)
+			return (NULL);
+		name_path = ft_strdup(shell->pre_path);
+	}
 	else
 	{
 		ft_strdel(&shell->pwd);
 		shell->pwd = getcwd(NULL, 0);
-		name_path =  ft_multi_strdup(3, shell->pwd, "/", command[1]);
+		name_path = ft_multi_strdup(3, shell->pwd, "/", command[1]);
 	}
 	ft_printf("name_path = {%s}\n", name_path);
 	return (name_path);
 }
 
-void	change_dir(t_shell *shell, char **command)
+void	new_dir(t_shell *shell, char *new_dir)
+{
+	ft_strdel(&shell->pre_path);
+	shell->pre_path = getcwd(NULL, 0);	
+	chdir(new_dir);
+}
+
+void	command_cd(t_shell *shell, char **command)
 {
 	char *name_path;
 
-	if (command[1] == NULL || command[1][0] == '~')
+	if (command[1] == NULL)
 	{
-		chdir(shell->home);
+		new_dir(shell, shell->home);
 		return ;
 	}
 	else if (command[2] != NULL)
+	{
 		ft_printf("cd: too many arguments\n"); 
-	name_path = create_name_path(shell, command);
+		return ;
+	}
+	if((name_path = create_name_path(shell, command)) == NULL)
+	{
+		ft_putendl("There is no previous path.");
+		return ;
+	}
 	if (access(name_path, F_OK | R_OK | X_OK) == 0)
-		chdir(name_path);
+		new_dir(shell, name_path);
 	else
 		ft_printf("cd: no such file or directory: %s\n", command[1]);
 	ft_strdel(&name_path);
@@ -136,7 +159,7 @@ int		check_command(char **command)
 
 void	command_env(t_shell *shell)
 {
-	print_arr(__environ);	
+	print_arr(environ, '\n');	
 }
 
 int		is_char(char *line, char c)
@@ -159,7 +182,7 @@ void	command_unsetenv(t_shell *shell, char **command)
 	}
 	unsetenv(command[1]);
 	free_envir(shell);
-	init(shell);
+	renew_env(shell);
 }
 
 void	command_setenv(t_shell *shell, char **command)
@@ -180,7 +203,110 @@ void	command_setenv(t_shell *shell, char **command)
 		if (setenv(command[1], command[2], 1) == -1)
 			ft_putendl("Error setenv.");
 	free_envir(shell);
-	init(shell);
+	renew_env(shell);
+}
+
+int		count_char(char *line, char c)
+{
+	int count;
+
+	count = 0;
+	while (*line != '\0')
+	{
+		if (*line == c)
+			count++;
+		line++;
+	}
+	return (count);
+}
+
+char	*dollar(char *line)
+{
+	char *temp;
+	char *new_str;
+
+	temp = line;
+	while (*temp != '\0' && *temp != ' ' && !not_print_c(*temp) &&
+			*temp != '"')
+		temp++;
+	new_str = ft_strnew(temp - line);
+	new_str = ft_strncat(new_str, line, temp - line);
+	line = getenv(new_str + 1);
+	ft_putstr(line);
+	ft_strdel(&new_str);
+	return (temp);
+}
+void	print_arr_echo(char **arr, char c)
+{
+	if (arr == NULL)
+		return ;
+	if (**arr == '$')
+		dollar(*arr);
+	else
+		ft_printf("%s", *arr);
+	arr++;
+	while (*arr != NULL)
+	{
+		ft_putchar(c);
+		if (**arr == '$')
+			dollar(*arr);
+		else
+			ft_putstr(*arr);
+		arr++;
+	}
+	ft_putchar('\n');
+}
+
+void	working_echo(char *line)
+{
+	int		bl;
+
+	bl = 1;
+	line = ft_strstr(line, "echo") + 4;
+	while (*(line + 1) == ' ')
+		line++;
+	while(*(++line) != '\0')
+	{
+		if (*line == '$')
+			line = dollar(line);
+		if (*line == '"')
+		{
+			bl = !bl;
+			continue;
+		}
+		if (bl && *line == ' ' && *(line + 1) == ' ')
+			continue;
+		else
+			ft_putchar(*line);
+	}
+	ft_putchar('\n');
+}
+
+void	command_echo(t_shell *shell, char **command, char *line)
+{
+	char	**arr;
+	int		count;
+
+	count = count_char(line, '"');
+	ft_printf("count = {%d}\n", count);
+	if (command[1] == NULL)
+		return ;
+	if (count % 2 != 0)
+	{
+		ft_putendl("echo: error double quotes.");
+		return ;
+	}
+	else if (count == 0)
+		print_arr_echo(command + 1, ' ');
+	else
+		working_echo(line);
+			
+	/*
+	if (is_char(line, '"'))
+	{
+		arr = ft_strsplit(line, '"');
+	}
+	*/
 }
 
 int		starting_builtins(t_shell *shell, char *line)
@@ -213,7 +339,13 @@ int		starting_builtins(t_shell *shell, char *line)
 	}
 	else if (!(ft_strcmp("cd", command[0])))
 	{
-		change_dir(shell, command);
+		command_cd(shell, command);
+		dell_arr(&command);
+		return (1);
+	}
+	else if (!(ft_strcmp("echo", command[0])))
+	{
+		command_echo(shell, command, line);
 		dell_arr(&command);
 		return (1);
 	}
@@ -222,7 +354,7 @@ int		starting_builtins(t_shell *shell, char *line)
 	return (0);
 }
 
-int not_print_c(char c)
+int		not_print_c(char c)
 {
 	if (c > 0 && c < 32)
 		return (1);
@@ -233,12 +365,16 @@ char	*parsing_line(char **line)
 {
 	char	*new_line;
 	int		i;
+	int		bl;
 
 	i = -1;
+	bl = 1;
 	new_line = ft_strnew(ft_strlen(*line));
 	while ((*line)[++i] != '\0')
 	{
-		if (not_print_c((*line)[i]))
+		if ((*line)[i] == '"')
+			bl = !bl;
+		if (not_print_c((*line)[i]) && bl)
 			new_line[i] = ' ';
 		else
 			new_line[i] = (*line)[i];
@@ -265,15 +401,18 @@ void	start_shell(t_shell *shell)
 	ft_strdel(&line);
 }
 
-void	print_arr(char **arr)
+void	print_arr(char **arr, char c)
 {
 	if (arr == NULL)
 		return ;
+	ft_printf("%s", *arr);
+	arr++;
 	while (*arr != NULL)
 	{
-		ft_putendl(*arr);
+		ft_printf("%c%s", c, *arr);
 		arr++;
 	}
+	ft_putchar('\n');
 }
 
 void	create_envir(t_shell *shell, char *temp)
@@ -284,11 +423,11 @@ void	create_envir(t_shell *shell, char *temp)
 		shell->path = ft_strsplit(temp + 5, ':');
 }
 
-void	init(t_shell *shell)
+void	renew_env(t_shell *shell)
 {
 	char **temp;
 	
-	temp = __environ;
+	temp = environ;
 	//dell_arr(&shell->path);
 	//shell->env = __environ;
 	shell->home = NULL;
@@ -318,6 +457,14 @@ void	free_envir(t_shell *shell)
 	dell_arr(&shell->path);
 }
 
+void	init(t_shell *shell)
+{
+	shell->home = NULL;
+	shell->path = NULL;
+	shell->pwd  = NULL;
+	shell->pre_path = NULL;
+}
+
 int		main(int ac, char **av)
 {
 	t_shell	shell;
@@ -325,15 +472,8 @@ int		main(int ac, char **av)
 	if (ac != 1)
 		print_error(av);
 	init(&shell);
+	renew_env(&shell);
 	start_shell(&shell);
 	free_envir(&shell);
 	return (0);
 }
-/*
-	char *str[10];
-   
-	str[0] = "-l";
-	str[1] = "-a";
-	execve("/bin/ls", str, env);
-	exit(0);
- */
