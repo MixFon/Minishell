@@ -377,6 +377,7 @@ char	*add_tilda_path(t_shell *shell, char *line)
 		{
 			temp = ft_multi_strdup(3, new_line, shell->home, line + i + 1); 
 			ft_strdel(&line);
+			ft_strdel(&new_line);
 			return (add_tilda_path(shell, temp));
 		}
 		new_line[i] = line[i];
@@ -389,13 +390,11 @@ char	*add_tilda_path(t_shell *shell, char *line)
 char	*parsing_line(t_shell *shell, char **line)
 {
 	char	*new_line;
-	char	*temp;;
 	int		i;
 	int		bl;
 
 	i = -1;
 	bl = 1;
-	temp = ft_strdup(*line);
 	*line = add_tilda_path(shell, *line);
 	new_line =ft_strnew(ft_strlen(*line));
 	while ((*line)[++i] != '\0')
@@ -428,6 +427,7 @@ void	start_shell(t_shell *shell)
 		{
 			ft_putstr("$>");
 			ft_strdel(&line);
+			free(command);
 			continue;
 		}
 		while (command[++i] != NULL)
@@ -496,6 +496,7 @@ void	free_envir(t_shell *shell)
 {
 	ft_strdel(&shell->home);
 	ft_strdel(&shell->pwd);
+	ft_strdel(&shell->pre_path);
 	dell_arr(&shell->path);
 }
 
