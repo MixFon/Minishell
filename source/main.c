@@ -361,15 +361,43 @@ int		not_print_c(char c)
 	return (0);
 }
 
-char	*parsing_line(char **line)
+char	*add_tilda_path(t_shell *shell, char *line)
 {
 	char	*new_line;
+	char	*temp;
+	int		i;
+
+	i = -1;
+	//ft_printf("line tilda = [%s]\n", line);
+	//ft_printf("shell->home = [%s]\n", shell->home);
+	new_line = ft_strnew(ft_strlen(line));
+	while (line[++i] != '\0')
+	{
+		if (line[i] == '~' && line[i + 1] == '/')
+		{
+			temp = ft_multi_strdup(3, new_line, shell->home, line + i + 1); 
+			ft_strdel(&line);
+			return (add_tilda_path(shell, temp));
+		}
+		new_line[i] = line[i];
+	}
+	ft_strdel(&line);
+	//ft_printf("new_line tilda = [%s]\n", new_line);
+	return (new_line);
+}
+
+char	*parsing_line(t_shell *shell, char **line)
+{
+	char	*new_line;
+	char	*temp;;
 	int		i;
 	int		bl;
 
 	i = -1;
 	bl = 1;
-	new_line = ft_strnew(ft_strlen(*line));
+	temp = ft_strdup(*line);
+	*line = add_tilda_path(shell, *line);
+	new_line =ft_strnew(ft_strlen(*line));
 	while ((*line)[++i] != '\0')
 	{
 		if ((*line)[i] == '"')
@@ -404,7 +432,7 @@ void	start_shell(t_shell *shell)
 		}
 		while (command[++i] != NULL)
 		{
-			command[i] = parsing_line(&command[i]);
+			command[i] = parsing_line(shell, &command[i]);
 			if (!(starting_builtins(shell, command[i])))
 				starting_bin(shell, command[i]);
 		}
