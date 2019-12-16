@@ -117,6 +117,8 @@ void	new_dir(t_shell *shell, char *new_dir)
 	ft_strdel(&shell->pre_path);
 	shell->pre_path = getcwd(NULL, 0);	
 	chdir(new_dir);
+	ft_strdel(&shell->pwd);
+	shell->pwd = getcwd(NULL, 0);
 }
 
 void	command_cd(t_shell *shell, char **command)
@@ -300,13 +302,6 @@ void	command_echo(t_shell *shell, char **command, char *line)
 		print_arr_echo(command + 1, ' ');
 	else
 		working_echo(line);
-			
-	/*
-	if (is_char(line, '"'))
-	{
-		arr = ft_strsplit(line, '"');
-	}
-	*/
 }
 
 int		starting_builtins(t_shell *shell, char *line)
@@ -411,13 +406,28 @@ char	*parsing_line(t_shell *shell, char **line)
 	return (new_line);
 }
 
+void	print_greeting(t_shell *shell)
+{
+	char *line;
+	
+	line = shell->pwd;
+	while (*line != '\0')
+		line ++;
+	while (*line != '/')
+		line--;
+	if (*(line + 1) == '\0')
+		ft_putstr("/ $>");
+	else
+		ft_printf("%s $>", line + 1);
+}
+
 void	start_shell(t_shell *shell)
 {
 	char *line;
 	char **command;
 	int i;
 
-	ft_putstr("$>");
+	print_greeting(shell);
 	while(get_next_line(0, &line))
 	{
 		i = -1;
@@ -425,7 +435,7 @@ void	start_shell(t_shell *shell)
 		command = ft_strsplit(line, ';');
 		if (check_command(command))
 		{
-			ft_putstr("$>");
+			print_greeting(shell);
 			ft_strdel(&line);
 			free(command);
 			continue;
@@ -437,7 +447,7 @@ void	start_shell(t_shell *shell)
 				starting_bin(shell, command[i]);
 		}
 		dell_arr(&command);
-		ft_putstr("$>");
+		print_greeting(shell);
 		ft_strdel(&line);
 	}
 	ft_strdel(&line);
@@ -474,7 +484,7 @@ void	renew_env(t_shell *shell)
 	//shell->env = __environ;
 	shell->home = NULL;
 	shell->path = NULL;
-	shell->pwd  = NULL;
+	shell->pwd = getcwd(NULL, 0);
 	while (*temp != NULL)
 	{
 		create_envir(shell, *temp);
@@ -504,7 +514,7 @@ void	init(t_shell *shell)
 {
 	shell->home = NULL;
 	shell->path = NULL;
-	shell->pwd  = NULL;
+	shell->pwd = NULL;
 	shell->pre_path = NULL;
 }
 
