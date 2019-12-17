@@ -406,11 +406,11 @@ char	*parsing_line(t_shell *shell, char **line)
 	return (new_line);
 }
 
-void	print_greeting(t_shell *shell)
+void	print_greeting(char *pwd)
 {
 	char *line;
 	
-	line = shell->pwd;
+	line = pwd;
 	while (*line != '\0')
 		line ++;
 	while (*line != '/')
@@ -427,7 +427,7 @@ void	start_shell(t_shell *shell)
 	char **command;
 	int i;
 
-	print_greeting(shell);
+	print_greeting(shell->pwd);
 	while(get_next_line(0, &line))
 	{
 		i = -1;
@@ -435,7 +435,7 @@ void	start_shell(t_shell *shell)
 		command = ft_strsplit(line, ';');
 		if (check_command(command))
 		{
-			print_greeting(shell);
+			print_greeting(shell->pwd);
 			ft_strdel(&line);
 			free(command);
 			continue;
@@ -447,7 +447,7 @@ void	start_shell(t_shell *shell)
 				starting_bin(shell, command[i]);
 		}
 		dell_arr(&command);
-		print_greeting(shell);
+		print_greeting(shell->pwd);
 		ft_strdel(&line);
 	}
 	ft_strdel(&line);
@@ -518,12 +518,26 @@ void	init(t_shell *shell)
 	shell->pre_path = NULL;
 }
 
+void	signal_work(int signal)
+{
+	char *pwd;
+
+	if (signal == SIGINT)
+	{
+		ft_putchar('\n');
+		pwd = getcwd(NULL, 0);
+		print_greeting(pwd);
+		ft_strdel(&pwd);
+	}
+}
+
 int		main(int ac, char **av)
 {
 	t_shell	shell;
 
 	if (ac != 1)
 		print_error(av);
+	signal(SIGINT, signal_work);
 	init(&shell);
 	renew_env(&shell);
 	start_shell(&shell);
