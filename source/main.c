@@ -16,16 +16,36 @@ void	dell_arr(char ***arr)
 	free(*arr);
 }
 
+int	check_access(char *name_bin)
+{
+	if (access(name_bin, X_OK) == -1)
+	{
+		ft_printf("minishell: permission denied: %s\n", name_bin);
+		return (1);
+	}
+	else if (access(name_bin, R_OK) == -1)
+	{
+		ft_printf("minishell: not read: %s\n", name_bin);
+		return (1);
+	}
+	return (0);
+}
+
 void	start_new_process(t_shell *shell, char **command,  char *name_bin)
 {
 	pid_t	child;
 	int		*status;
 
 	ft_printf("name no_pat\n");
+	if (check_access(name_bin))
+		return ;
 	child = fork();
 	if (child == 0)
 		if (execve(name_bin, command, environ) == -1)
+		{
 			ft_printf("Error opening %s file\n", name_bin);
+			exit(0);
+		}
 	if (wait(NULL) == -1)
 		ft_putendl("Error wait");
 }
@@ -33,7 +53,7 @@ void	start_new_process(t_shell *shell, char **command,  char *name_bin)
 void	is_no_path(t_shell *shell, char **command)
 {
 	ft_printf("name no_path = {%s}\n", *command);
-	if (access(*command, F_OK | R_OK | X_OK) == 0)
+	if (access(*command, /*X_OK | R_OK |*/ F_OK) == 0)
 		start_new_process(shell, command,  *command);
 	else
 		ft_printf("minishell: command not found: %s\n", command[0]);
@@ -53,7 +73,7 @@ void	is_a_path(t_shell *shell, char **command)
 		else
 			name_bin = ft_multi_strdup(3, *path, "/", *command);
 		ft_printf("name = {%s}\n", name_bin);
-		if (access(name_bin, F_OK | R_OK | X_OK) == 0)
+		if (access(name_bin,/* X_OK | R_OK |*/ F_OK) == 0)
 		{
 			start_new_process(shell, command,  name_bin);
 			break ;
