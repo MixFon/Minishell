@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   main.c                                             :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: widraugr <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2019/12/18 10:34:17 by widraugr          #+#    #+#             */
+/*   Updated: 2019/12/18 19:16:28 by widraugr         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "minishell.h"
 
 void	dell_arr(char ***arr)
@@ -41,7 +53,7 @@ void	start_new_process(t_shell *shell, char **command,  char *name_bin)
 		return ;
 	child = fork();
 	if (child == 0)
-		if (execve(name_bin, command, environ) == -1)
+		if (execve(name_bin, command, shell->environment) == -1)
 		{
 			ft_printf("Error opening %s file\n", name_bin);
 			exit(0);
@@ -181,7 +193,8 @@ int		check_command(char **command)
 
 void	command_env(t_shell *shell)
 {
-	print_arr(environ, '\n');	
+	print_list_env(shell->env);
+	//print_arr(environ, '\n');	
 }
 
 int		is_char(char *line, char c)
@@ -195,6 +208,38 @@ int		is_char(char *line, char c)
 	return (0);
 }
 
+void	del_one_lies(t_env **env)
+{
+	ft_strdel(&(*env)->name);
+	ft_strdel(&(*env)->value);
+	free(*env);
+}
+
+void	unsetenv_list(t_shell *shell, char *name)
+{
+	t_env *env;
+	t_env *pre;
+
+	env = shell->env;
+	if (!ft_strcmp(env->name, name))
+	{
+		shell->env = shell->env->next;
+		del_one_lies(&env);
+		return ;
+	}
+	while (env != NULL)
+	{
+		if (!ft_strcmp(env->name, name))
+		{
+			pre->next = env->next;
+			del_one_lies(&env);
+			return ;
+		}
+		pre = env;
+		env = env->next;
+	}
+}
+
 void	command_unsetenv(t_shell *shell, char **command)
 {
 	if (command[1] == NULL)
@@ -202,9 +247,68 @@ void	command_unsetenv(t_shell *shell, char **command)
 		ft_putendl("unsetenv: wrong arguments.");
 		return ;
 	}
-	unsetenv(command[1]);
+	unsetenv_list(shell, command[1]);
 	free_envir(shell);
 	renew_env(shell);
+}
+
+t_env	*seatch_env_list(t_env *env, char *name)
+{
+	while (env != NULL)
+	{
+		if (!ft_strcmp(env->name, name))
+			return (env);
+		env = env->next;
+	}
+	return (NULL);
+}
+
+void	add_new_env(t_shell *shell, char *name, char *value)
+{
+	t_env *new;
+
+	if (!(new = (t_env *)malloc(sizeof(t_env))))
+		sys_err("Error malloc.\n");
+	new->name = ft_strdup(name);
+	new->value = ft_strdup(value);
+	new->next = shell->env;
+	shell->env = new;
+}
+
+int		check_value(char *line, char *value)
+{
+	char	**arr;
+	int		i;
+
+	i = -1;
+	arr = ft_strsplit(line, ':');
+	while (arr[++i] != NULL)
+		if (!(ft_strcmp(arr[i], value)))
+		{
+			dell_arr(&arr);
+			return (1);
+		}
+	dell_arr(&arr);
+	return (0);
+}
+
+void	setenv_list(t_shell *shell, char *name, char *value)
+{
+	t_env	*new;
+	char	*temp;
+
+	if (name == NULL || value == NULL)
+		return ;
+	if ((new = seatch_env_list(shell->env, name)) == NULL)
+		add_new_env(shell, name, value);
+	else
+	{
+		if (check_value(new->value, value))
+			return ;
+		temp = new->value;
+		new->value = ft_multi_strdup(3, temp, ":", value);
+		ft_strdel(&temp);
+	}
 }
 
 void	command_setenv(t_shell *shell, char **command)
@@ -217,13 +321,11 @@ void	command_setenv(t_shell *shell, char **command)
 	{
 		kv = ft_strsplit(command[1], '=');
 		ft_printf("kv[0] = [%s], kv[1] = {%s}\n", kv[0], kv[1]);
-		if (setenv(kv[0], kv[1], 1) == -1)
-			ft_putendl("Error setenv.");
+		setenv_list(shell, kv[0], kv[1]);
 		dell_arr(&kv);
 	}
 	else
-		if (setenv(command[1], command[2], 1) == -1)
-			ft_putendl("Error setenv.");
+		setenv_list(shell, command[1], command[2]);
 	free_envir(shell);
 	renew_env(shell);
 }
@@ -242,44 +344,29 @@ int		count_char(char *line, char c)
 	return (count);
 }
 
-char	*dollar(char *line)
+void	getenv_list(t_shell *shell, char *name)
 {
-	char *temp;
-	char *new_str;
+	t_env *env;
 
-	temp = line;
-	while (*temp != '\0' && *temp != ' ' && !not_print_c(*temp) &&
-			*temp != '"')
-		temp++;
-	new_str = ft_strnew(temp - line);
-	new_str = ft_strncat(new_str, line, temp - line);
-	line = getenv(new_str + 1);
-	ft_putstr(line);
-	ft_strdel(&new_str);
-	return (temp);
+	if ((env = seatch_env_list(shell->env, name)) == NULL)
+		return ;
+	ft_putstr(env->value);
 }
-void	print_arr_echo(char **arr, char c)
+
+void	print_arr_echo(t_shell *shell, char **arr, char c)
 {
 	if (arr == NULL)
 		return ;
-	if (**arr == '$')
-		dollar(*arr);
-	else
-		ft_printf("%s", *arr);
-	arr++;
 	while (*arr != NULL)
 	{
 		ft_putchar(c);
-		if (**arr == '$')
-			dollar(*arr);
-		else
-			ft_putstr(*arr);
+		ft_putstr(*arr);
 		arr++;
 	}
 	ft_putchar('\n');
 }
 
-void	working_echo(char *line)
+void	working_echo(t_shell *shell, char *line)
 {
 	int		bl;
 
@@ -289,8 +376,6 @@ void	working_echo(char *line)
 		line++;
 	while(*(++line) != '\0')
 	{
-		if (*line == '$')
-			line = dollar(line);
 		if (*line == '"')
 		{
 			bl = !bl;
@@ -319,9 +404,9 @@ void	command_echo(t_shell *shell, char **command, char *line)
 		return ;
 	}
 	else if (count == 0)
-		print_arr_echo(command + 1, ' ');
+		print_arr_echo(shell, command + 1, ' ');
 	else
-		working_echo(line);
+		working_echo(shell, line);
 }
 
 int		starting_builtins(t_shell *shell, char *line)
@@ -376,7 +461,39 @@ int		not_print_c(char c)
 	return (0);
 }
 
-char	*add_tilda_path(t_shell *shell, char *line)
+size_t	lencstr(char *line)
+{
+	size_t i;
+
+	i = 0;
+	/*
+	while (line[i] != ' ' && line[i] < '\t' && line[i] != '"' &&
+			line[i] != '\0')
+			*/
+	while (line[i] > 32 && line[i] != '"')
+		i++;
+	return (i);
+}
+
+char	*work_bollar(t_shell *shell, char *line, char *new_line, int i)
+{
+	char	*rez;
+	size_t	len;
+	t_env	*env;
+	char	*temp;
+	
+	len = lencstr(line + i);
+	temp = ft_strnew(len);
+	temp = ft_strncpy(temp, line + i + 1, len - 1);
+	if ((env = seatch_env_list(shell->env, temp)) == NULL)
+		rez = ft_multi_strdup(2, new_line, line + i + len); 
+	else
+		rez = ft_multi_strdup(3, new_line, env->value, line + i + len); 
+	ft_strdel(&temp);
+	return (rez);
+}
+
+char	*add_tilda_dollar(t_shell *shell, char *line)
 {
 	char	*new_line;
 	char	*temp;
@@ -393,7 +510,14 @@ char	*add_tilda_path(t_shell *shell, char *line)
 			temp = ft_multi_strdup(3, new_line, shell->home, line + i + 1); 
 			ft_strdel(&line);
 			ft_strdel(&new_line);
-			return (add_tilda_path(shell, temp));
+			return (add_tilda_dollar(shell, temp));
+		}
+		else if (line[i] == '$')
+		{
+			temp = work_bollar(shell, line, new_line, i);
+			ft_strdel(&line);
+			ft_strdel(&new_line);
+			return (add_tilda_dollar(shell, temp));
 		}
 		new_line[i] = line[i];
 	}
@@ -410,7 +534,7 @@ char	*parsing_line(t_shell *shell, char **line)
 
 	i = -1;
 	bl = 1;
-	*line = add_tilda_path(shell, *line);
+	*line = add_tilda_dollar(shell, *line);
 	new_line =ft_strnew(ft_strlen(*line));
 	while ((*line)[++i] != '\0')
 	{
@@ -487,28 +611,30 @@ void	print_arr(char **arr, char c)
 	ft_putchar('\n');
 }
 
-void	create_envir(t_shell *shell, char *temp)
+void	create_envir(t_shell *shell, char *name, char *value)
 {
-	if (!(ft_strncmp("HOME", temp, 4)))
-		shell->home = ft_strdup(temp + 5);
-	else if (!(ft_strncmp("PATH", temp, 4)))
-		shell->path = ft_strsplit(temp + 5, ':');
+	if (!(ft_strncmp("HOME=", name, 5)))
+		shell->home = ft_strdup(value);
+	else if (!(ft_strncmp("PATH", name, 4)))
+		shell->path = ft_strsplit(value, ':');
 }
 
 void	renew_env(t_shell *shell)
 {
-	char **temp;
+	//char **temp;
+	t_env *env;
 	
-	temp = environ;
+	env = shell->env;
+	//temp = shell->environment;
 	//dell_arr(&shell->path);
 	//shell->env = __environ;
 	shell->home = NULL;
 	shell->path = NULL;
 	shell->pwd = getcwd(NULL, 0);
-	while (*temp != NULL)
+	while (env != NULL)
 	{
-		create_envir(shell, *temp);
-		temp++;
+		create_envir(shell, env->name, env->value);
+		env = env->next;
 	}
 }
 
@@ -524,14 +650,61 @@ void	print_error(char **av)
 
 void	free_envir(t_shell *shell)
 {
-	ft_strdel(&shell->home);
 	ft_strdel(&shell->pwd);
+	ft_strdel(&shell->home);
 	ft_strdel(&shell->pre_path);
 	dell_arr(&shell->path);
 }
 
-void	init(t_shell *shell)
+void	print_list_env(t_env *env)
 {
+	while (env != NULL)
+	{
+		ft_printf("%s=%s\n", env->name, env->value);
+		env = env->next;
+	}
+}
+
+t_env	*chreate_env(char *line)
+{
+	t_env	*new;
+	size_t	len;
+	
+	if (!(new = (t_env *)malloc(sizeof(t_env))))
+		sys_err("Error malloc\n");
+	len = ft_strcl(line, '=');
+	new->name = ft_strnew(len);
+	new->name = ft_strncpy(new->name, line, len);	
+	new->value = ft_strdup(line + len + 1);
+	new->next = NULL;
+	return (new);
+}
+
+void	init_environment(t_shell *shell, char **env)
+{
+	t_env	*new_env;
+
+	shell->env = NULL;
+	new_env = NULL;
+	while (*env != NULL)
+	{
+		if (shell->env == NULL)
+			shell->env = chreate_env(*env);
+		else
+		{
+			new_env = chreate_env(*env);
+			new_env->next = shell->env;
+			shell->env = new_env;
+		}
+		env++;
+	}
+	//print_list_env(shell->env);
+}
+
+void	init(t_shell *shell, char **env)
+{
+	init_environment(shell, env);
+	shell->environment = env;
 	shell->home = NULL;
 	shell->path = NULL;
 	shell->pwd = NULL;
@@ -542,25 +715,42 @@ void	signal_work(int signal)
 {
 	char *pwd;
 
-	if (signal == SIGINT)
+	ft_putchar('\n');
+	pwd = getcwd(NULL, 0);
+	print_greeting(pwd);
+	ft_strdel(&pwd);
+}
+
+void	set_signal_handler()
+{
+	signal(SIGINT, signal_work);
+	signal(SIGQUIT, signal_work);
+	signal(SIGTSTP, signal_work);
+}
+
+void	delete_list_env(t_shell *shell)
+{
+	t_env *temp;
+
+	while (shell->env != NULL)
 	{
-		ft_putchar('\n');
-		pwd = getcwd(NULL, 0);
-		print_greeting(pwd);
-		ft_strdel(&pwd);
+		temp = shell->env;
+		shell->env = shell->env->next;
+		del_one_lies(&temp);
 	}
 }
 
-int		main(int ac, char **av)
+int		main(int ac, char **av, char **env)
 {
 	t_shell	shell;
 
 	if (ac != 1)
 		print_error(av);
-	signal(SIGINT, signal_work);
-	init(&shell);
+	set_signal_handler();
+	init(&shell, env);
 	renew_env(&shell);
 	start_shell(&shell);
 	free_envir(&shell);
+	delete_list_env(&shell);
 	return (0);
 }
