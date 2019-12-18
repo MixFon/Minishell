@@ -7,8 +7,6 @@
 #include <signal.h>
 #include <stdlib.h>
 
-//extern char **environ;
-
 typedef struct		s_env
 {
 	char			*name;

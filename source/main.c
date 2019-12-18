@@ -6,7 +6,7 @@
 /*   By: widraugr <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2019/12/18 10:34:17 by widraugr          #+#    #+#             */
-/*   Updated: 2019/12/18 19:16:28 by widraugr         ###   ########.fr       */
+/*   Updated: 2019/12/18 20:13:44 by widraugr         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,7 +28,7 @@ void	dell_arr(char ***arr)
 	free(*arr);
 }
 
-int	check_access(char *name_bin)
+int		check_access(char *name_bin)
 {
 	if (access(name_bin, X_OK) == -1)
 	{
@@ -172,8 +172,11 @@ void	command_cd(t_shell *shell, char **command)
 		ft_putendl("There is no previous path.");
 		return ;
 	}
-	if (access(name_path, F_OK | R_OK | X_OK) == 0)
-		new_dir(shell, name_path);
+	if (access(name_path, F_OK) == 0)
+	{
+		if (!check_access(name_path))
+			new_dir(shell, name_path);
+	}
 	else
 		ft_printf("cd: no such file or directory: %s\n", command[1]);
 	ft_strdel(&name_path);
@@ -194,7 +197,6 @@ int		check_command(char **command)
 void	command_env(t_shell *shell)
 {
 	print_list_env(shell->env);
-	//print_arr(environ, '\n');	
 }
 
 int		is_char(char *line, char c)
@@ -466,10 +468,6 @@ size_t	lencstr(char *line)
 	size_t i;
 
 	i = 0;
-	/*
-	while (line[i] != ' ' && line[i] < '\t' && line[i] != '"' &&
-			line[i] != '\0')
-			*/
 	while (line[i] > 32 && line[i] != '"')
 		i++;
 	return (i);
@@ -535,7 +533,7 @@ char	*parsing_line(t_shell *shell, char **line)
 	i = -1;
 	bl = 1;
 	*line = add_tilda_dollar(shell, *line);
-	new_line =ft_strnew(ft_strlen(*line));
+	new_line = ft_strnew(ft_strlen(*line));
 	while ((*line)[++i] != '\0')
 	{
 		if ((*line)[i] == '"')
@@ -613,10 +611,16 @@ void	print_arr(char **arr, char c)
 
 void	create_envir(t_shell *shell, char *name, char *value)
 {
-	if (!(ft_strncmp("HOME=", name, 5)))
+	if (!(ft_strcmp("HOME", name)))
+	{
+		ft_putendl("1111111");
 		shell->home = ft_strdup(value);
-	else if (!(ft_strncmp("PATH", name, 4)))
+	}
+	else if (!(ft_strcmp("PATH", name)))
+	{
+		ft_putendl("22222");
 		shell->path = ft_strsplit(value, ':');
+	}
 }
 
 void	renew_env(t_shell *shell)
