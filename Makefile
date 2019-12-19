@@ -6,7 +6,7 @@
 #    By: widraugr <marvin@42.fr>                    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2018/11/29 13:07:44 by widraugr          #+#    #+#              #
-#    Updated: 2019/11/18 19:12:43 by widraugr         ###   ########.fr        #
+#    Updated: 2019/12/19 11:02:53 by widraugr         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -14,9 +14,9 @@ NAME = minishell
 
 NAMEBIN = libft
 
-FILE_C =	main.c
+FILE_C =  main.c
 #-Wall -Wextra -Werror
-FLAGS =  -I libft -I include   
+FLAGS =  -Wall -Wextra -Werror -I libft -I include   
 
 FLIB = -L ./libft -lftprintf 
 

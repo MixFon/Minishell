@@ -6,7 +6,7 @@
 /*   By: widraugr <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2019/12/18 10:34:17 by widraugr          #+#    #+#             */
-/*   Updated: 2019/12/18 20:13:44 by widraugr         ###   ########.fr       */
+/*   Updated: 2019/12/19 11:08:26 by widraugr         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,9 +46,7 @@ int		check_access(char *name_bin)
 void	start_new_process(t_shell *shell, char **command,  char *name_bin)
 {
 	pid_t	child;
-	int		*status;
 
-	ft_printf("name no_pat\n");
 	if (check_access(name_bin))
 		return ;
 	child = fork();
@@ -64,8 +62,7 @@ void	start_new_process(t_shell *shell, char **command,  char *name_bin)
 
 void	is_no_path(t_shell *shell, char **command)
 {
-	ft_printf("name no_path = {%s}\n", *command);
-	if (access(*command, /*X_OK | R_OK |*/ F_OK) == 0)
+	if (access(*command, F_OK) == 0)
 		start_new_process(shell, command,  *command);
 	else
 		ft_printf("minishell: command not found: %s\n", command[0]);
@@ -76,7 +73,6 @@ void	is_a_path(t_shell *shell, char **command)
 	char **path;
 	char *name_bin;
 
-	ft_putendl("is_a_path");
 	path = shell->path;
 	while (*path != NULL)
 	{
@@ -84,7 +80,6 @@ void	is_a_path(t_shell *shell, char **command)
 			name_bin = ft_strdup(*command);
 		else
 			name_bin = ft_multi_strdup(3, *path, "/", *command);
-		ft_printf("name = {%s}\n", name_bin);
 		if (access(name_bin,/* X_OK | R_OK |*/ F_OK) == 0)
 		{
 			start_new_process(shell, command,  name_bin);
@@ -96,25 +91,19 @@ void	is_a_path(t_shell *shell, char **command)
 	if (*path == NULL)
 		ft_printf("minishell: command not found: %s\n", command[0]);
 	ft_strdel(&name_bin);
-	ft_putendl("is_a_path<");
 }
 
 void	starting_bin(t_shell *shell, char *line)
 {
 	char **command;
-	char **path;
 
 	command = ft_strsplit(line, ' ');
 	if (check_command(command))
 		return ;
-	ft_printf("shell->path:\n");
-	print_arr(shell->path, '\n');
 	if (shell->path == NULL)
 		is_no_path(shell, command);
 	else
 		is_a_path(shell, command);
-	//print_arr(shell->env);
-	//print_arr(command);
 	dell_arr(&command);
 }
 
@@ -140,7 +129,6 @@ char	*create_name_path(t_shell *shell, char **command)
 		shell->pwd = getcwd(NULL, 0);
 		name_path = ft_multi_strdup(3, shell->pwd, "/", command[1]);
 	}
-	ft_printf("name_path = {%s}\n", name_path);
 	return (name_path);
 }
 
@@ -164,7 +152,7 @@ void	command_cd(t_shell *shell, char **command)
 	}
 	else if (command[2] != NULL)
 	{
-		ft_printf("cd: too many arguments\n"); 
+		ft_putendl("cd: too many arguments."); 
 		return ;
 	}
 	if((name_path = create_name_path(shell, command)) == NULL)
@@ -322,7 +310,6 @@ void	command_setenv(t_shell *shell, char **command)
 	if (is_char(command[1], '='))
 	{
 		kv = ft_strsplit(command[1], '=');
-		ft_printf("kv[0] = [%s], kv[1] = {%s}\n", kv[0], kv[1]);
 		setenv_list(shell, kv[0], kv[1]);
 		dell_arr(&kv);
 	}
@@ -355,10 +342,12 @@ void	getenv_list(t_shell *shell, char *name)
 	ft_putstr(env->value);
 }
 
-void	print_arr_echo(t_shell *shell, char **arr, char c)
+void	print_arr_echo(char **arr, char c)
 {
 	if (arr == NULL)
 		return ;
+	ft_putstr(*arr);
+	arr++;
 	while (*arr != NULL)
 	{
 		ft_putchar(c);
@@ -368,7 +357,7 @@ void	print_arr_echo(t_shell *shell, char **arr, char c)
 	ft_putchar('\n');
 }
 
-void	working_echo(t_shell *shell, char *line)
+void	working_echo(char *line)
 {
 	int		bl;
 
@@ -391,13 +380,11 @@ void	working_echo(t_shell *shell, char *line)
 	ft_putchar('\n');
 }
 
-void	command_echo(t_shell *shell, char **command, char *line)
+void	command_echo(char **command, char *line)
 {
-	char	**arr;
 	int		count;
 
 	count = count_char(line, '"');
-	ft_printf("count = {%d}\n", count);
 	if (command[1] == NULL)
 		return ;
 	if (count % 2 != 0)
@@ -406,54 +393,57 @@ void	command_echo(t_shell *shell, char **command, char *line)
 		return ;
 	}
 	else if (count == 0)
-		print_arr_echo(shell, command + 1, ' ');
+		print_arr_echo(command + 1, ' ');
 	else
-		working_echo(shell, line);
+		working_echo(line);
 }
 
-int		starting_builtins(t_shell *shell, char *line)
+void	exit_env_setenv_cd(t_shell *shell, char **command, int *bl)
 {
-	char **command;
-
-	ft_putendl("builtins");
-	command = ft_strsplit(line, ' ');
-	if (check_command(command))
-		return (1);
 	if (!(ft_strcmp("exit", command[0])))
 		exit(0);
 	else if (!(ft_strcmp("env", command[0])))
 	{
 		command_env(shell);
-		dell_arr(&command);
-		return (1);
+		*bl = 1;
 	}
 	else if (!(ft_strcmp("setenv", command[0])))
 	{
 		command_setenv(shell, command);
-		dell_arr(&command);
-		return (1);
-	}
-	else if (!(ft_strcmp("unsetenv", command[0])))
-	{
-		command_unsetenv(shell, command);
-		dell_arr(&command);
-		return (1);
+		*bl = 1;
 	}
 	else if (!(ft_strcmp("cd", command[0])))
 	{
 		command_cd(shell, command);
-		dell_arr(&command);
+		*bl = 1;
+	}
+}
+
+int		starting_builtins(t_shell *shell, char *line)
+{
+	char	**command;
+	int		bl;
+
+	bl = 0;
+	command = ft_strsplit(line, ' ');
+	if (check_command(command))
+	{
+		free(command);
 		return (1);
+	}
+	exit_env_setenv_cd(shell, command, &bl);
+	if (!(ft_strcmp("unsetenv", command[0])))
+	{
+		command_unsetenv(shell, command);
+		bl = 1;
 	}
 	else if (!(ft_strcmp("echo", command[0])))
 	{
-		command_echo(shell, command, line);
-		dell_arr(&command);
-		return (1);
+		command_echo(command, line);
+		bl = 1;
 	}
 	dell_arr(&command);
-	ft_putendl("builtins<");
-	return (0);
+	return (bl);
 }
 
 int		not_print_c(char c)
@@ -498,8 +488,6 @@ char	*add_tilda_dollar(t_shell *shell, char *line)
 	int		i;
 
 	i = -1;
-	//ft_printf("line tilda = [%s]\n", line);
-	//ft_printf("shell->home = [%s]\n", shell->home);
 	new_line = ft_strnew(ft_strlen(line));
 	while (line[++i] != '\0')
 	{
@@ -520,7 +508,6 @@ char	*add_tilda_dollar(t_shell *shell, char *line)
 		new_line[i] = line[i];
 	}
 	ft_strdel(&line);
-	//ft_printf("new_line tilda = [%s]\n", new_line);
 	return (new_line);
 }
 
@@ -544,7 +531,6 @@ char	*parsing_line(t_shell *shell, char **line)
 			new_line[i] = (*line)[i];
 	}
 	ft_strdel(line);
-	ft_printf("new line = [%s]\n", new_line);
 	return (new_line);
 }
 
@@ -573,13 +559,12 @@ void	start_shell(t_shell *shell)
 	while(get_next_line(0, &line))
 	{
 		i = -1;
-		ft_printf("line = {%s}\n", line);
 		command = ft_strsplit(line, ';');
 		if (check_command(command))
 		{
-			print_greeting(shell->pwd);
 			ft_strdel(&line);
 			free(command);
+			print_greeting(shell->pwd);
 			continue;
 		}
 		while (command[++i] != NULL)
@@ -612,33 +597,45 @@ void	print_arr(char **arr, char c)
 void	create_envir(t_shell *shell, char *name, char *value)
 {
 	if (!(ft_strcmp("HOME", name)))
-	{
-		ft_putendl("1111111");
 		shell->home = ft_strdup(value);
-	}
 	else if (!(ft_strcmp("PATH", name)))
-	{
-		ft_putendl("22222");
 		shell->path = ft_strsplit(value, ':');
+}
+
+int		len_list(t_env *env)
+{
+	int i; 
+
+	i = 0;
+	while (env != NULL)
+	{
+		i++;
+		env = env->next;
 	}
+	return (i);
 }
 
 void	renew_env(t_shell *shell)
 {
-	//char **temp;
-	t_env *env;
+	t_env	*env;
+	int		len;
+	int		i;
 	
+	i = 0;
+	len = len_list(shell->env);
+	if (!(shell->environment = (char **)malloc(sizeof(char *) * (len + 1))))
+		sys_err("Error malloc\n");
 	env = shell->env;
-	//temp = shell->environment;
-	//dell_arr(&shell->path);
-	//shell->env = __environ;
+	shell->environment[len] = NULL;
 	shell->home = NULL;
 	shell->path = NULL;
 	shell->pwd = getcwd(NULL, 0);
 	while (env != NULL)
 	{
 		create_envir(shell, env->name, env->value);
+		shell->environment[i] = ft_multi_strdup(3, env->name, "=", env->value);
 		env = env->next;
+		i++;
 	}
 }
 
@@ -646,6 +643,7 @@ void	print_error(char **av)
 {
 	char *err;
 
+	av = NULL;
 	err = "Too many arguments.\n\n\
    Use:\n\
    ./minishell\n";
@@ -658,6 +656,7 @@ void	free_envir(t_shell *shell)
 	ft_strdel(&shell->home);
 	ft_strdel(&shell->pre_path);
 	dell_arr(&shell->path);
+	dell_arr(&shell->environment);
 }
 
 void	print_list_env(t_env *env)
@@ -702,7 +701,6 @@ void	init_environment(t_shell *shell, char **env)
 		}
 		env++;
 	}
-	//print_list_env(shell->env);
 }
 
 void	init(t_shell *shell, char **env)
@@ -715,7 +713,7 @@ void	init(t_shell *shell, char **env)
 	shell->pre_path = NULL;
 }
 
-void	signal_work(int signal)
+void	signal_work()
 {
 	char *pwd;
 
