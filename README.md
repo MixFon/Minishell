@@ -15,6 +15,14 @@ git clone https://github.com/MixFon/libft.git ./Minishell/libft
 
 make
 
+Запустить проект:
+
+./minishell
+
+Остановить проект:
+
+ctrl + D 
+
 Более подробную информацию о проекте и используемых функциях Вы сможите найти, пройдя по ссылкам:
 
 https://paper.dropbox.com/doc/Minishell--ArA1P1akBBTxdDXacUVynyS3AQ-zbSHW2zqRdXWRDA3TBy7Q
